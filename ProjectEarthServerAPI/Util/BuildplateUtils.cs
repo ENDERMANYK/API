@@ -4,12 +4,16 @@ using System.IO;
 using Newtonsoft.Json;
 using ProjectEarthServerAPI.Models.Buildplate;
 using ProjectEarthServerAPI.Models.Multiplayer;
+using ProjectEarthServerAPI.Models.Player;
 using Serilog;
+using Uma.Uuid;
 
 namespace ProjectEarthServerAPI.Util
 {
 	public class BuildplateUtils
 	{
+		private static Version4Generator version4Generator = new Version4Generator();
+
 		public static BuildplateListResponse GetBuildplatesList(string playerId)
 		{
 			var buildplates = ReadPlayerBuildplateList(playerId);
@@ -43,6 +47,8 @@ namespace ProjectEarthServerAPI.Util
 
 			if (!bpList.UnlockedBuildplates.Contains(buildplateId))
 				bpList.UnlockedBuildplates.Add(buildplateId);
+
+			WritePlayerBuildplateList(playerId, bpList);
 		}
 
 		public static BuildplateData CloneTemplateBuildplate(string playerId, BuildplateData templateBuildplate)
@@ -88,9 +94,56 @@ namespace ProjectEarthServerAPI.Util
 			WritePlayerBuildplateList(playerId, list);
 		}
 
+		public static ShareBuildplateResponse ShareBuildplate(Guid buildplateId, string playerId)
+		{
+			string sharedId = version4Generator.NewUuid().ToString();
+			BuildplateData originalBuildplate = ReadBuildplate(buildplateId);
+			SharedBuildplateData sharedBuildplate = new SharedBuildplateData() {
+				blocksPerMeter = originalBuildplate.blocksPerMeter,
+				dimension = originalBuildplate.dimension,
+				model = originalBuildplate.model,
+				offset = originalBuildplate.offset,
+				order = originalBuildplate.order,
+				surfaceOrientation = originalBuildplate.surfaceOrientation,
+				type = "Survival"
+			};
+
+			InventoryResponse.Result inventory = InventoryUtils.GetHotbarForSharing(playerId);
+
+			SharedBuildplateInfo buildplateInfo = new SharedBuildplateInfo() { playerId = "Unknown user", buildplateData = sharedBuildplate, inventory = inventory, sharedOn = DateTime.UtcNow};
+			SharedBuildplateResponse buildplateResponse = new SharedBuildplateResponse() { result = buildplateInfo, continuationToken = null, expiration = null, updates = new Models.Updates() };
+			
+			WriteSharedBuildplate(buildplateResponse, sharedId);
+			
+			ShareBuildplateResponse response = new ShareBuildplateResponse() { result = "minecraftearth://sharedbuildplate?id=" + sharedId, expiration = null, continuationToken = null, updates = null};
+			
+			return response;
+		}	
+
+		public static SharedBuildplateResponse ReadSharedBuildplate(string buildplateId)
+		{
+			var filepath = StateSingleton.Instance.config.sharedBuildplateStorageFolderLocation + $"{buildplateId}.json"; 
+			if (!File.Exists(filepath))
+			{
+				Log.Error($"Error: Tried to read buildplate that does not exist! BuildplateID: {buildplateId}");
+				return null;
+			}
+
+			var buildplateJson = File.ReadAllText(filepath);
+			var parsedobj = JsonConvert.DeserializeObject<SharedBuildplateResponse>(buildplateJson);
+			return parsedobj;
+		}
+
+		public static void WriteSharedBuildplate(SharedBuildplateResponse data, string buildplateId)
+		{
+			var filepath = StateSingleton.Instance.config.sharedBuildplateStorageFolderLocation + $"{buildplateId}.json"; 
+
+			File.WriteAllText(filepath, JsonConvert.SerializeObject(data));
+		}
+
 		public static BuildplateData ReadBuildplate(Guid buildplateId)
 		{
-			var filepath = $"./data/buildplates/{buildplateId}.json"; // TODO: Add to config
+			var filepath = StateSingleton.Instance.config.buildplateStorageFolderLocation + $"{buildplateId}.json"; 
 			if (!File.Exists(filepath))
 			{
 				Log.Error($"Error: Tried to read buildplate that does not exist! BuildplateID: {buildplateId}");
@@ -105,7 +158,7 @@ namespace ProjectEarthServerAPI.Util
 		public static void WriteBuildplate(BuildplateData data)
 		{
 			var buildplateId = data.id;
-			var filepath = $"./data/buildplates/{buildplateId}.json"; // TODO: Add to config
+			var filepath = StateSingleton.Instance.config.buildplateStorageFolderLocation + $"{buildplateId}.json"; 
 
 			data.lastUpdated = DateTime.UtcNow;
 

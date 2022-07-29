@@ -19,8 +19,8 @@ namespace ProjectEarthServerAPI.Util
 			try
 			{
 				Directory.CreateDirectory(Path.Combine(basePath, pos1.ToString()));
-				string downloadUrl = "https://cdn.mceserv.net/tile/16/" + pos1 + "/" + pos1 + "_" + pos2 + "_16.png";
-				//string downloadUrl = "https://tiles.projectearth.dev/styles/mc-earth/16/" + pos1 + "/" + pos2 + ".png"; // Disabled until aliasing issues are fixed
+				//string downloadUrl = "https://cdn.mceserv.net/tile/16/" + pos1 + "/" + pos1 + "_" + pos2 + "_16.png";// Disabled because the server is down 
+				string downloadUrl = StateSingleton.Instance.config.tileServerUrl + "/styles/mc-earth/16/" + pos1 + "/" + pos2 + ".png"; 
 				webClient.DownloadFile(downloadUrl, Path.Combine(basePath, pos1.ToString(), $"{pos1}_{pos2}_16.png"));
 				webClient.Dispose();
 				return true;

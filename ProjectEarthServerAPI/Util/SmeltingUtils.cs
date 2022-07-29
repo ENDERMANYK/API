@@ -21,24 +21,30 @@ namespace ProjectEarthServerAPI.Util
 
 			var recipe = recipeList.result.smelting.Find(match => match.id == request.RecipeId);
 
+			if (!SmeltingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				SmeltingJobs.Add(playerId, playerUtilityBlocks.result.smelting);
+			}
+
 			if (recipe != null)
 			{
 				var itemsToReturn = recipe.returnItems.ToList();
 
-				//InventoryUtils.RemoveItemFromInv(playerId, recipe.inputItemId, null, request.Ingredient.quantity*request.Multiplier); UNCOMMENT/COMMENT THESE LINES TO ENABLE/DISABLE ITEM REMOVALS
+				InventoryUtils.RemoveItemFromInv(playerId, recipe.inputItemId, request.Ingredient.quantity * request.Multiplier); //UNCOMMENT/COMMENT THESE LINES TO ENABLE/DISABLE ITEM REMOVALS
 
 				var fuelInfo = new FuelInfo();
+				var burning = new BurningItems();
 
-				// InventoryUtils.RemoveItemFromInv(playerId, request.FuelIngredient.itemId, null, request.FuelIngredient.quantity);
+				if (SmeltingJobs[playerId][slot].burning == null || DateTime.Compare(SmeltingJobs[playerId][slot].burning.burnsUntil.Value, DateTime.UtcNow) < 0)
+				{
+					InventoryUtils.RemoveItemFromInv(playerId, request.FuelIngredient.itemId, request.FuelIngredient.quantity);
+				}
 				var burnInfo = catalog.result.items.Find(match => match.id == request.FuelIngredient.itemId).burnRate;
 				fuelInfo = new FuelInfo {burnRate = new BurnInfo {burnTime = burnInfo.burnTime * request.FuelIngredient.quantity, heatPerSecond = burnInfo.heatPerSecond}, itemId = request.FuelIngredient.itemId, itemInstanceIds = request.FuelIngredient.itemInstanceIds, quantity = request.FuelIngredient.quantity};
-
-				var nextStreamId = GenericUtils.GetNextStreamVersion();
-
-				SmeltingSlotInfo job = new SmeltingSlotInfo
-				{
-					available = 0,
-					boostState = null,
+				if (SmeltingJobs[playerId][slot].burning != null) {
+					burning = SmeltingJobs[playerId][slot].burning;
+				} else {
 					burning = new BurningItems
 					{
 						burnStartTime = currentDateTime,
@@ -46,7 +52,15 @@ namespace ProjectEarthServerAPI.Util
 						fuel = fuelInfo,
 						heatDepleted = 0,
 						remainingBurnTime = new TimeSpan(0, 0, fuelInfo.burnRate.burnTime)
-					},
+					};
+				}
+				var nextStreamId = GenericUtils.GetNextStreamVersion();
+
+				SmeltingSlotInfo job = new SmeltingSlotInfo
+				{
+					available = 0,
+					boostState = null,
+					burning = burning,
 					fuel = fuelInfo,
 					hasSufficientFuel = (recipe.heatRequired <= fuelInfo.burnRate.burnTime * fuelInfo.burnRate.heatPerSecond * fuelInfo.quantity), // Should always be true, requires special handling if false.
 					heatAppliedToCurrentItem = 0,
@@ -70,14 +84,6 @@ namespace ProjectEarthServerAPI.Util
 					job.nextCompletionUtc = currentDateTime.AddSeconds((double)recipe.heatRequired / fuelInfo.burnRate.heatPerSecond);
 				}
 
-				if (!SmeltingJobs.ContainsKey(playerId))
-				{
-					SmeltingJobs.Add(playerId, new Dictionary<int, SmeltingSlotInfo>());
-					SmeltingJobs[playerId].Add(1, new SmeltingSlotInfo());
-					SmeltingJobs[playerId].Add(2, new SmeltingSlotInfo());
-					SmeltingJobs[playerId].Add(3, new SmeltingSlotInfo());
-				}
-
 				SmeltingJobs[playerId][slot] = job;
 
 				UtilityBlockUtils.UpdateUtilityBlocks(playerId, slot, job);
@@ -94,6 +100,11 @@ namespace ProjectEarthServerAPI.Util
 		{
 			try
 			{
+				if (!SmeltingJobs.ContainsKey(playerId))
+				{
+					UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+					SmeltingJobs.Add(playerId, playerUtilityBlocks.result.smelting);
+				}
 				var currentTime = DateTime.UtcNow;
 				var job = SmeltingJobs[playerId][slot];
 				var recipe = recipeList.result.smelting.Find(match => match.id == job.recipeId & !match.deprecated);
@@ -131,7 +142,7 @@ namespace ProjectEarthServerAPI.Util
 					job.burning.remainingBurnTime = job.burning.burnsUntil.Value.TimeOfDay - currentTime.TimeOfDay;
 
 					job.burning.heatDepleted = (currentTime - job.burning.burnStartTime.Value).TotalSeconds *
-					                           job.burning.fuel.burnRate.heatPerSecond;
+											   job.burning.fuel.burnRate.heatPerSecond;
 
 					job.heatAppliedToCurrentItem =
 						(float)job.burning.heatDepleted - job.available * recipe.heatRequired;
@@ -158,6 +169,11 @@ namespace ProjectEarthServerAPI.Util
 
 		public static CollectItemsResponse FinishSmeltingJob(string playerId, int slot)
 		{
+			if (!SmeltingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				SmeltingJobs.Add(playerId, playerUtilityBlocks.result.smelting);
+			}
 			var job = SmeltingJobs[playerId][slot];
 			var recipe = recipeList.result.smelting.Find(match => match.id == job.recipeId & !match.deprecated);
 			var currentTime = DateTime.UtcNow;
@@ -195,9 +211,9 @@ namespace ProjectEarthServerAPI.Util
 				craftedAmount = job.available;
 				// TODO: Add to challenges, tokens, journal (when implemented)
 			}
-            
-            InventoryUtils.AddItemToInv(playerId, job.output.itemId, job.output.quantity * craftedAmount);
-			EventUtils.HandleEvents(playerId, new ItemEvent { action = ItemEventAction.ItemSmelted, amount = (uint)(job.output.quantity * craftedAmount), eventId = job.output.itemId });
+
+			InventoryUtils.AddItemToInv(playerId, job.output.itemId, job.output.quantity * craftedAmount);
+			EventUtils.HandleEvents(playerId, new ItemEvent { action = ItemEventAction.ItemSmelted, amount = (uint)(job.output.quantity * craftedAmount), eventId = job.output.itemId, location = EventLocation.Smelting});
 
 			returnResponse.result.rewards.Inventory = returnResponse.result.rewards.Inventory.Append(new RewardComponent {Amount = job.output.quantity * craftedAmount, Id = job.output.itemId}).ToArray();
 
@@ -210,7 +226,7 @@ namespace ProjectEarthServerAPI.Util
 			{
 				job.burning.remainingBurnTime = new TimeSpan((job.burning.burnsUntil - currentTime.TimeOfDay).Value.Ticks);
 				job.burning.heatDepleted = (currentTime - job.burning.burnStartTime.Value).TotalSeconds *
-				                           job.burning.fuel.burnRate.heatPerSecond;
+										   job.burning.fuel.burnRate.heatPerSecond;
 
 				job.fuel = null;
 				job.heatAppliedToCurrentItem = null;
@@ -229,12 +245,6 @@ namespace ProjectEarthServerAPI.Util
 				job.streamVersion = nextStreamId;
 			}
 
-			returnResponse.result.rewards.Inventory = returnResponse.result.rewards.Inventory.Append(new RewardComponent
-            {
-                Amount = job.output.quantity*craftedAmount,
-                Id = job.output.itemId
-            }).ToArray();
-            
 			UtilityBlockUtils.UpdateUtilityBlocks(playerId, slot, job);
 
 			Log.Debug($"[{playerId}]: Collected results of smelting slot {slot}.");
@@ -244,6 +254,11 @@ namespace ProjectEarthServerAPI.Util
 
 		public static bool CancelSmeltingJob(string playerId, int slot)
 		{
+			if (!SmeltingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				SmeltingJobs.Add(playerId, playerUtilityBlocks.result.smelting);
+			}
 			var job = SmeltingJobs[playerId][slot];
 			var currentTime = DateTime.UtcNow;
 			var nextStreamId = GenericUtils.GetNextStreamVersion();
@@ -255,7 +270,7 @@ namespace ProjectEarthServerAPI.Util
 
 			job.burning.remainingBurnTime = new TimeSpan((job.burning.burnsUntil - currentTime.TimeOfDay).Value.Ticks);
 			job.burning.heatDepleted = (currentTime - job.burning.burnStartTime.Value).TotalSeconds *
-			                           job.burning.fuel.burnRate.heatPerSecond;
+									   job.burning.fuel.burnRate.heatPerSecond;
 
 			job.burning.burnStartTime = null;
 			job.burning.burnsUntil = null;
@@ -285,9 +300,14 @@ namespace ProjectEarthServerAPI.Util
 
 		public static CraftingUpdates UnlockSmeltingSlot(string playerId, int slot)
 		{
+			if (!SmeltingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				SmeltingJobs.Add(playerId, playerUtilityBlocks.result.smelting);
+			}
 			var job = SmeltingJobs[playerId][slot];
 
-			RubyUtils.SetRubies(playerId, job.unlockPrice.cost - job.unlockPrice.discount, false);
+			RubyUtils.RemoveRubiesFromPlayer(playerId, job.unlockPrice.cost - job.unlockPrice.discount);
 			job.state = "Empty";
 			job.unlockPrice = null;
 

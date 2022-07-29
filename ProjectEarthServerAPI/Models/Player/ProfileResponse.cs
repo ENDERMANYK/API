@@ -117,6 +117,7 @@ namespace ProjectEarthServerAPI.Models
 		{
 			totalExperience = 0;
 			level = 1;
+			health = 20;
 			healthPercentage = 100f;
 		}
 	}

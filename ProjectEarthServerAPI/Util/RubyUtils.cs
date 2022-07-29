@@ -18,29 +18,39 @@ namespace ProjectEarthServerAPI.Util
 			return GenericUtils.WriteJsonFile(playerId, ruby, "rubies");
 		}
 
-		public static int SetRubies(string playerId, int count, bool shouldReplaceNotAdd)
+		public static bool AddRubiesToPlayer(string playerId, int count)
 		{
 			var origRubies = ReadRubies(playerId);
-			if (shouldReplaceNotAdd)
-			{
-				origRubies.result.earned = count;
-			}
-			else
-			{
-				origRubies.result.earned += count;
-			}
+			origRubies.result.earned += count;
 
 			var newRubyNum = origRubies.result.earned;
 
 			WriteRubies(playerId, origRubies);
 
-			return newRubyNum;
+			return true;
+		}
+
+		public static bool RemoveRubiesFromPlayer(string playerId, int count)
+		{
+			var origRubies = ReadRubies(playerId);
+			origRubies.result.earned -= count;
+
+			var newRubyNum = origRubies.result.earned;
+
+			WriteRubies(playerId, origRubies);
+
+			return true;
 		}
 
 		public static RubyResponse GetNormalRubyResponse(string playerid)
 		{
 			var splitrubies = ReadRubies(playerid);
-			var response = new RubyResponse() {result = splitrubies.result.earned + splitrubies.result.purchased};
+			var response = new RubyResponse() {
+				result = splitrubies.result.earned + splitrubies.result.purchased,
+				expiration = null,
+				continuationToken = null,
+				updates = new Updates()
+			};
 
 			return response;
 		}

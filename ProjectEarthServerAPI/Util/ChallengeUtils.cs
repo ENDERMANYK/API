@@ -12,6 +12,8 @@ namespace ProjectEarthServerAPI.Util
 	public class ChallengeUtils
 	{
 
+		private static Random random = new Random();
+
 		public static bool ActivateChallengeForPlayer(string playerId, Guid challengeId)
 		{
 			var challenge = StateSingleton.Instance.challengeStorage.challenges[challengeId].challengeInfo;
@@ -70,7 +72,7 @@ namespace ProjectEarthServerAPI.Util
 			var completionToken = new Token {clientProperties = new Dictionary<string, string>(), clientType = "challenge.completed", lifetime = "Persistent", rewards = challenge.rewards};
 			completionToken.clientProperties.Add("challengeid", challengeId.ToString());
 			completionToken.clientProperties.Add("category", challenge.category.GetDisplayName());
-			completionToken.clientProperties.Add("expirationtimeutc", playerChallenges.result.challenges[challengeId].endTimeUtc.Value.ToString(CultureInfo.InvariantCulture));
+			completionToken.clientProperties.Add("expirationtimeutc", playerChallenges.result.challenges[challengeId]?.endTimeUtc.Value.ToString(CultureInfo.InvariantCulture));
 
 			var returnUpdates = new Updates();
 
@@ -79,7 +81,42 @@ namespace ProjectEarthServerAPI.Util
 
 			EventUtils.HandleEvents(playerId, new ChallengeEvent { action = ChallengeEventAction.ChallengeCompleted, eventId = challengeId });
 
+			if (playerChallenges.result.challenges[challengeId].duration == ChallengeDuration.PersonalContinuous)
+				RemoveChallengeFromPlayer(playerId, challengeId);
+
 			return returnUpdates;
+		}
+
+		public static void GenerateTimedChallenges(string playerId) 
+		{
+			int maximumTimed = (int)StateSingleton.Instance.settings.result.maximumpersonaltimedchallenges;
+			List<Guid> challenges = StateSingleton.Instance.challengeStorage.challenges
+				.Where(pred => pred.Value.challengeInfo.duration == ChallengeDuration.PersonalTimed)
+				.ToDictionary(pred => pred.Key, pred => pred.Value).Keys.ToList();
+
+			List<Guid> playerChallenges = ReadChallenges(playerId).result.challenges
+				.Where(pred => pred.Value.duration == ChallengeDuration.PersonalTimed)
+				.ToDictionary(pred => pred.Key, pred => pred.Value).Keys.ToList();
+
+			foreach (var challenge in playerChallenges)
+			{
+				RemoveChallengeFromPlayer(playerId, challenge);
+			}
+
+			if (maximumTimed > challenges.Count)
+				maximumTimed = challenges.Count;
+
+			int prevIndex = -1;
+			for (int i = 0; i < maximumTimed; i++) 
+			{
+				int index = random.Next(0, maximumTimed);
+				if (prevIndex != index) {
+					AddChallengeToPlayer(playerId, challenges[index]);
+					prevIndex = index;
+				} else {
+					i--;
+				}
+			}
 		}
 
 		public static void AddChallengeToPlayer(string playerId, Guid challengeId)
@@ -87,7 +124,21 @@ namespace ProjectEarthServerAPI.Util
 			var challenge = StateSingleton.Instance.challengeStorage.challenges[challengeId].challengeInfo;
 			var playerChallenges = ReadChallenges(playerId);
 
-			playerChallenges.result.challenges.Add(challengeId, challenge);
+			if (challenge.duration == ChallengeDuration.PersonalTimed)
+				challenge.endTimeUtc = DateTime.UtcNow.Date.AddDays(1);
+
+			if (!playerChallenges.result.challenges.ContainsKey(challengeId))
+				playerChallenges.result.challenges.Add(challengeId, challenge);
+
+			WriteChallenges(playerId, playerChallenges);
+		}
+
+		public static void RemoveChallengeFromPlayer(string playerId, Guid challengeId)
+		{
+			var playerChallenges = ReadChallenges(playerId);
+
+			if (playerChallenges.result.challenges[challengeId] != null)
+				playerChallenges.result.challenges.Remove(challengeId);
 
 			WriteChallenges(playerId, playerChallenges);
 		}
@@ -122,7 +173,7 @@ namespace ProjectEarthServerAPI.Util
 						.Where(pred => pred.challengeRequirements.tappables?
 							.Find(pred => 
 								pred.targetTappableTypes == null
-								|| pred.targetTappableTypes.Contains(tappable.location.type)) != null)
+								|| pred.targetTappableTypes.Contains(tappable.location.icon)) != null)
 						.ToList();
 
 					break;
@@ -214,6 +265,8 @@ namespace ProjectEarthServerAPI.Util
         public static ChallengesResponse ReloadChallenges(string playerId)
         {
             var playerChallenges = ReadChallenges(playerId);
+			if (playerChallenges.result.challenges.Where(pred => pred.Value.duration == ChallengeDuration.PersonalTimed).Count() == 0) 
+				GenerateTimedChallenges(playerId);
             return playerChallenges;
         }
 

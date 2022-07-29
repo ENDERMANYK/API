@@ -30,27 +30,27 @@ namespace ProjectEarthServerAPI.Util
 		private static readonly Dictionary<Guid, WebSocket> ServerSocketList = new();
 		private static readonly Dictionary<Guid, bool> InstanceReadyList = new();
 
-        public static async Task<BuildplateServerResponse> CreateBuildplateInstance(string playerId,
-            string buildplateId,
-            Coordinate playerCoords)
-        {
+		public static async Task<BuildplateServerResponse> CreateBuildplateInstance(string playerId,
+			string buildplateId,
+			Coordinate playerCoords)
+		{
 
-	        Log.Information($"[{playerId}]: Creating new buildplate instance: Buildplate {buildplateId}");
+			Log.Information($"[{playerId}]: Creating new buildplate instance: Buildplate {buildplateId}");
 
 			Random rdm = new Random();
-            var serverRoleInstanceBytes = new byte[6];
-            rdm.NextBytes(serverRoleInstanceBytes);
+			var serverRoleInstanceBytes = new byte[6];
+			rdm.NextBytes(serverRoleInstanceBytes);
 
-            //var serverRoleInstance = BitConverter.ToString(serverRoleInstanceBytes);
-            var serverRoleInstance = "776932eeeb69";
-            var serverPlayerJoinCode = Convert.ToBase64String(serverRoleInstanceBytes);
+			//var serverRoleInstance = BitConverter.ToString(serverRoleInstanceBytes);
+			var serverRoleInstance = "776932eeeb69";
+			var serverPlayerJoinCode = Convert.ToBase64String(serverRoleInstanceBytes);
 
-            var server = ServerInfoList.First();
-            var serverIp = server.Value.ip;
-            var serverPort = server.Value.port;
-            var serverInstanceId = await NotifyServerInstance(server.Key, buildplateId, playerId);
+			var server = ServerInfoList.First();
+			var serverIp = server.Value.ip;
+			var serverPort = server.Value.port;
+			var serverInstanceId = await NotifyServerInstance(server.Key, buildplateId, playerId);
 
-            var buildplate = BuildplateUtils.ReadBuildplate(Guid.Parse(buildplateId));
+			var buildplate = BuildplateUtils.ReadBuildplate(Guid.Parse(buildplateId));
 			var blocksPerMeter = buildplate.blocksPerMeter;
 			var buildplateOffset = buildplate.offset;
 			var instanceMetadata = new BuildplateServerResponse.InstanceMetadata {buildplateid = buildplateId};
@@ -95,25 +95,25 @@ namespace ProjectEarthServerAPI.Util
 			};
 
 			var result = new BuildplateServerResponse
-            {
-                result = new BuildplateServerResponse.Result
-                {
-                    applicationStatus = "Unknown",
-                    //fqdn = "dns2527870c-89c6-420e-8378-996a2c40304a-azurebatch-cloudservice.westeurope.cloudapp.azure.com", // figure out why this breaks everything
-                    fqdn = "d.projectearth.dev",
-                    gameplayMetadata = buildplateData,
-                    hostCoordinate = playerCoords,
-                    instanceId = serverInstanceId.ToString(),
-                    ipV4Address = serverIp,
-                    metadata = JsonConvert.SerializeObject(instanceMetadata),
-                    partitionId = playerId,
-                    port = serverPort,
-                    roleInstance = serverRoleInstance,
-                    serverReady = false,
-                    serverStatus = "Running"
-                },
-                updates = new Updates()
-            };
+			{
+				result = new BuildplateServerResponse.Result
+				{
+					applicationStatus = "Unknown",
+					//fqdn = "dns2527870c-89c6-420e-8378-996a2c40304a-azurebatch-cloudservice.westeurope.cloudapp.azure.com", // figure out why this breaks everything
+					fqdn = "d.projectearth.dev",
+					gameplayMetadata = buildplateData,
+					hostCoordinate = playerCoords,
+					instanceId = serverInstanceId.ToString(),
+					ipV4Address = serverIp,
+					metadata = JsonConvert.SerializeObject(instanceMetadata),
+					partitionId = playerId,
+					port = serverPort,
+					roleInstance = serverRoleInstance,
+					serverReady = false,
+					serverStatus = "Running"
+				},
+				updates = new Updates()
+			};
 
 			if (InstanceReadyList[serverInstanceId])
 			{
@@ -151,7 +151,13 @@ namespace ProjectEarthServerAPI.Util
 				InstanceList[instanceId].result.serverReady = true;
 				return InstanceList[instanceId];
 			}
-			else return null;
+			else return InstanceList[instanceId];
+		}
+
+		public static BuildplateServerResponse GetServerInstance(string joinCode)
+		{
+			var instance = InstanceList.FirstOrDefault(match => match.Value.result.gameplayMetadata.playerJoinCode == joinCode).Value;
+			return instance;
 		}
 
 		private static HotbarTranslation[] EditHotbarForPlayer(string playerId, MultiplayerItem[] multiplayerHotbar)
@@ -198,13 +204,26 @@ namespace ProjectEarthServerAPI.Util
 				if (item.guid != Guid.Empty)
 				{
 					var catalogItem = StateSingleton.Instance.catalog.result.items.Find(match => match.id == item.guid);
-					hotbar[i] = new InventoryResponse.Hotbar
+					if (item.instance_data != null)
 					{
-						count = item.count,
-						id = item.guid,
-						instanceId = item.instance_data.id,
-						health = item.instance_data.health
-					};
+						hotbar[i] = new InventoryResponse.Hotbar
+						{
+							count = 1,
+							id = item.guid,
+							instanceId = item.instance_data.id,
+							health = item.instance_data.health
+						};
+					}
+					else
+					{
+						hotbar[i] = new InventoryResponse.Hotbar
+						{
+							count = item.count,
+							id = item.guid,
+							instanceId = null,
+							health = null
+						};
+					}
 
 					response[i] = new HotbarTranslation
 					{
@@ -277,7 +296,7 @@ namespace ProjectEarthServerAPI.Util
 					slot.count = request.count + 1;
 					slot.id = catalogItem.id;
 
-                    if (isNonStackableItem) slot.health = request.health;
+					if (isNonStackableItem) slot.health = request.health;
 				}
 
 				hotbar[request.slotIndex] = slot;

@@ -129,13 +129,16 @@ namespace ProjectEarthServerAPI.Util
 				{
 					var itementry = inv.result.nonStackableItems.Find(match => match.id == itemIdToAdd);
 					InventoryResponse.ItemInstance inst = new InventoryResponse.ItemInstance { health = 100.00, id = Guid.NewGuid() };
-					if (instanceId != null)
+					if (itementry != null && instanceId != null)
 					{
-						var instance = GetItemInstance(playerId, itemIdToAdd, instanceId.Value);
-						if (instance != null) inst = instance;
+						itementry.instances.Add(new InventoryResponse.ItemInstance { health = 100.00, id = instanceId.Value });
+						itementry.seen.on = DateTime.UtcNow;
 					}
-
-					if (itementry == null)
+					else if (itementry != null)
+					{
+						itementry.instances.Add(new InventoryResponse.ItemInstance { health = 100.00, id = Guid.NewGuid() });
+					}
+					else
 					{
 						itementry = new InventoryResponse.NonStackableItem
 						{
@@ -145,6 +148,7 @@ namespace ProjectEarthServerAPI.Util
 							seen = new InventoryResponse.DateTimeOn { @on = DateTime.UtcNow },
 							unlocked = new InventoryResponse.DateTimeOn { @on = DateTime.UtcNow }
 						};
+						inv.result.nonStackableItems.Add(itementry);
 					}
 
 					JournalUtils.UpdateEntry(playerId, itementry);
@@ -168,6 +172,7 @@ namespace ProjectEarthServerAPI.Util
 							seen = new InventoryResponse.DateTimeOn() { on = DateTime.UtcNow },
 							unlocked = new InventoryResponse.DateTimeOn() { on = DateTime.UtcNow }
 						};
+						inv.result.stackableItems.Add(itementry);
 					}
 
 					JournalUtils.UpdateEntry(playerId, itementry);
@@ -252,15 +257,39 @@ namespace ProjectEarthServerAPI.Util
 				inv.result.hotbar);
 		}
 
+		public static InventoryResponse.Result GetHotbarForSharing(string playerId)
+		{
+			var inv = ReadInventory(playerId).result;
+			var sharedInv = new InventoryResponse.Result();
+			sharedInv.hotbar = inv.hotbar;
+			sharedInv.stackableItems = new List<InventoryResponse.StackableItem>();
+			sharedInv.nonStackableItems = new List<InventoryResponse.NonStackableItem>();
+			for (int i = 0; i < 8; i++) {
+				if (inv.hotbar[i] != null) {
+					if (inv.hotbar[i].instanceId != null) {
+						var nonStackableItem = inv.nonStackableItems.Find(match => match.id == inv.hotbar[i].id);
+						nonStackableItem.instances = new List<InventoryResponse.ItemInstance>();
+						sharedInv.nonStackableItems.Add(nonStackableItem);
+					} else {
+						var stackableItem = inv.stackableItems.Find(match => match.id == inv.hotbar[i].id);	
+						stackableItem.owned = 0; 
+						sharedInv.stackableItems.Add(stackableItem);
+					}
+				}
+			}
+			return sharedInv;
+		}
+
 		public static Tuple<InventoryUtilResult, InventoryResponse.Hotbar[]> EditHotbar(string playerId, InventoryResponse.Hotbar[] newHotbar, bool moveItemsToInventory = true)
 		{
+			Log.Debug($"[InventoryUtils] edit hotbar for player id: {playerId}");
 			var inv = ReadInventory(playerId);
 
 			for (int i = 0; i < inv.result.hotbar.Length; i++)
 			{
 				if (newHotbar[i]?.instanceId != null)
 				{
-					newHotbar[i].health = GetItemInstance(playerId, newHotbar[i].id, newHotbar[i].instanceId.Value).health;
+					newHotbar[i].health = 100.00;
 				}
 				if (newHotbar[i]?.id != inv.result.hotbar[i]?.id |
 					newHotbar[i]?.count != inv.result.hotbar[i]?.count)
@@ -297,7 +326,15 @@ namespace ProjectEarthServerAPI.Util
 
 							if (inv.result.hotbar[i] != null)
 							{
-								AddItemToInv(playerId, inv.result.hotbar[i].id, inv.result.hotbar[i].count);
+								if (inv.result.hotbar[i].instanceId != null)
+								{
+									AddItemToInv(playerId, inv.result.hotbar[i].id, 1, inv.result.hotbar[i].instanceId);
+									Log.Information("test");
+								}
+								else
+								{
+									AddItemToInv(playerId, inv.result.hotbar[i].id, inv.result.hotbar[i].count);
+								}
 							}
 
 							RemoveItemFromInv(playerId, newHotbar[i].id,

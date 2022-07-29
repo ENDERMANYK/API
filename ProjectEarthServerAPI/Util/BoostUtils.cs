@@ -200,7 +200,8 @@ namespace ProjectEarthServerAPI.Util
 
 			baseBoosts.result.potions.Remove(potionToRemove);
 			baseBoosts.result.activeEffects.RemoveAll(match =>
-				boostToRemove.item.boostMetadata.effects.Contains(match.effect) && match.expiration == potionToRemove.expiration);
+				//boostToRemove.item.boostMetadata.effects.Contains(match.effect) && //returns false
+				match.expiration == potionToRemove.expiration);
 
 			baseBoosts.result.statusEffects = CalculateStatusEffects(baseBoosts);
 
@@ -228,9 +229,13 @@ namespace ProjectEarthServerAPI.Util
 			statusEffects.craftingSpeed = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "craftingspeed")?.effect.value;
 			statusEffects.experiencePointRate = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "itemexperiencepoints")?.effect.value; // Find out if this or the other one
 			statusEffects.foodHealthRate = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "foodhealth")?.effect.value;
-			statusEffects.maximumPlayerHealth = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "maximumplayerhealth")?.effect.value;
+			statusEffects.maximumPlayerHealth = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "maximumplayerhealth")?.effect.value+20;
 			statusEffects.playerDefenseRate = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "playerdefense")?.effect.value;
 			statusEffects.smeltingFuelIntensity = (int?)baseBoosts.result.activeEffects.Find(match => match.effect.type.ToLower() == "smeltingfuelintensity")?.effect.value;
+
+			if (statusEffects.maximumPlayerHealth == null) {
+				statusEffects.maximumPlayerHealth = 20;
+			}
 
 			return statusEffects;
 		}

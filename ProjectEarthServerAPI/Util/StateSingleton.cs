@@ -38,7 +38,7 @@ namespace ProjectEarthServerAPI.Util
 		public ChallengeStorage challengeStorage { get; set; }
 		public ProductCatalogResponse productCatalog { get; set; }
 
-		public Dictionary<string, List<List<Guid>>> tappableData { get; set; }
+		public Dictionary<string, TappableUtils.TappableLootTable> tappableData { get; set; }
 
 		/// <summary>
 		/// A reference of guid <-> id, so that we can keep track of a tappable from spawn to redeem

@@ -20,7 +20,7 @@ namespace ProjectEarthServerAPI.Models.Player
 
 		public class Hotbar
 		{
-			public double health { get; set; }
+			public double? health { get; set; }
 			public Guid id { get; set; }
 			public Guid? instanceId { get; set; }
 			public int count { get; set; }

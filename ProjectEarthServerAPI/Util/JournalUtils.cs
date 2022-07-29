@@ -99,6 +99,7 @@ namespace ProjectEarthServerAPI.Util
 			}
 
 			journal.result.activityLog.Add(activityLogEntry);
+			WriteJournalForPlayer(playerId, journal);
 		}
 
 		public static JournalResponse ReadJournalForPlayer(string playerId)

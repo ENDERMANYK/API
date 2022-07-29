@@ -18,7 +18,7 @@ namespace ProjectEarthServerAPI.Util
 			foreach (var challenge in rewards.Challenges)
 			{
 				ChallengeUtils.AddChallengeToPlayer(playerId, challenge.Id);
-				EventUtils.HandleEvents(playerId, new ChallengeEvent { action = ChallengeEventAction.ChallengeCompleted, eventId = challenge.Id });
+				EventUtils.HandleEvents(playerId, new ChallengeEvent { action = ChallengeEventAction.ChallengeUnlocked, eventId = challenge.Id });
 
 				updates.challenges = nextStreamId;
 			}
@@ -45,6 +45,12 @@ namespace ProjectEarthServerAPI.Util
 			if (rewards.ExperiencePoints != null)
 			{
 				ProfileUtils.AddExperienceToPlayer(playerId, rewards.ExperiencePoints.Value);
+				updates.characterProfile = nextStreamId;
+			}
+
+			if (rewards.Rubies != null)
+			{
+				RubyUtils.AddRubiesToPlayer(playerId, rewards.Rubies.Value);
 				updates.characterProfile = nextStreamId;
 			}
 

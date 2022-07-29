@@ -35,7 +35,7 @@ namespace ProjectEarthServerAPI.Models.Features
 
 	public class SmeltingRecipe
 	{
-		public string inputItemId { get; set; }
+		public Guid inputItemId { get; set; }
 		public int heatRequired { get; set; }
 		public string id { get; set; }
 		public RecipeOutput output { get; set; }

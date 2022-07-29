@@ -17,9 +17,9 @@ namespace ProjectEarthServerAPI.Util
 		public static bool UpdateUtilityBlocks(string playerId, int slot, CraftingSlotInfo job)
 		{
 			var currentUtilBlocks = ReadUtilityBlocks(playerId);
-			currentUtilBlocks.result.crafting[slot.ToString()] = job;
-			currentUtilBlocks.result.crafting["2"].streamVersion = job.streamVersion;
-			currentUtilBlocks.result.crafting["3"].streamVersion = job.streamVersion;
+			currentUtilBlocks.result.crafting[slot] = job;
+			currentUtilBlocks.result.crafting[2].streamVersion = job.streamVersion;
+			currentUtilBlocks.result.crafting[3].streamVersion = job.streamVersion;
 
 			WriteUtilityBlocks(playerId, currentUtilBlocks);
 
@@ -29,9 +29,9 @@ namespace ProjectEarthServerAPI.Util
 		public static bool UpdateUtilityBlocks(string playerId, int slot, SmeltingSlotInfo job)
 		{
 			var currentUtilBlocks = ReadUtilityBlocks(playerId);
-			currentUtilBlocks.result.smelting[slot.ToString()] = job;
-			currentUtilBlocks.result.smelting["2"].streamVersion = job.streamVersion;
-			currentUtilBlocks.result.smelting["3"].streamVersion = job.streamVersion;
+			currentUtilBlocks.result.smelting[slot] = job;
+			currentUtilBlocks.result.smelting[2].streamVersion = job.streamVersion;
+			currentUtilBlocks.result.smelting[3].streamVersion = job.streamVersion;
 
 			WriteUtilityBlocks(playerId, currentUtilBlocks);
 

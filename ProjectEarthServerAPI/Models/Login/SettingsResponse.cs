@@ -6,6 +6,9 @@ namespace ProjectEarthServerAPI.Models
 	public class SettingsResponse
 	{
 		public SettingsResult result { get; set; }
+		public object expiration { get; set; }
+		public object continuationToken { get; set; }
+		public Updates updates { get; set; }
 
 		public static SettingsResponse FromFile(string path)
 		{

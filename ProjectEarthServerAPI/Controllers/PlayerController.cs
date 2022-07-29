@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Serilog;
 using Uma.Uuid;
+using System.Collections.Generic;
 
 namespace ProjectEarthServerAPI.Controllers
 {
@@ -57,6 +58,16 @@ namespace ProjectEarthServerAPI.Controllers
 	}
 
 	[Authorize]
+	[Route("1/api/v{version:apiVersion}/player/profile/language")] 
+	public class PlayerLanguageController : Controller
+	{
+		public IActionResult Get(string language)
+		{
+			return Ok();
+		}
+	}
+
+	[Authorize]
 	[ApiVersion("1.1")]
 	[ResponseCache(Duration = 11200)]
 	[Route("1/api/v{version:apiVersion}/player/splitRubies")]
@@ -91,6 +102,24 @@ namespace ProjectEarthServerAPI.Controllers
 
 			if (success) return Ok();
 			else return Unauthorized();
+		}
+
+		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/challenges/timed/generate")]
+		public IActionResult PostGenerateTimedChallenges()
+		{
+			var authtoken = User.FindFirstValue(ClaimTypes.NameIdentifier);
+			ChallengeUtils.GenerateTimedChallenges(authtoken);
+			return Ok();
+		}
+
+		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/challenges/continuous/{challengeId}/remove")]
+		public IActionResult DeleteContinuousChallenge(Guid challengeId)
+		{
+			var authtoken = User.FindFirstValue(ClaimTypes.NameIdentifier);
+			ChallengeUtils.RemoveChallengeFromPlayer(authtoken, challengeId);
+			return Ok();
 		}
 	}
 
@@ -163,7 +192,7 @@ namespace ProjectEarthServerAPI.Controllers
 	{
 		public IActionResult Get()
 		{
-			return Content("{\"result\":{\"encounterinteractionradius\":40.0,\"tappableinteractionradius\":70.0,\"tappablevisibleradius\":-5.0,\"targetpossibletappables\":100.0,\"tile0\":10537.0,\"slowrequesttimeout\":2500.0,\"cullingradius\":50.0,\"commontapcount\":3.0,\"epictapcount\":7.0,\"speedwarningcooldown\":3600.0,\"mintappablesrequiredpertile\":22.0,\"targetactivetappables\":30.0,\"tappablecullingradius\":500.0,\"raretapcount\":5.0,\"requestwarningtimeout\":10000.0,\"speedwarningthreshold\":11.176,\"asaanchormaxplaneheightthreshold\":0.5,\"maxannouncementscount\":0.0,\"removethislater\":23.0,\"crystalslotcap\":3.0,\"crystaluncommonduration\":10.0,\"crystalrareduration\":10.0,\"crystalepicduration\":10.0,\"crystalcommonduration\":10.0,\"crystallegendaryduration\":10.0,\"maximumpersonaltimedchallenges\":3.0,\"maximumpersonalcontinuouschallenges\":3.0},\"expiration\":null,\"continuationToken\":null,\"updates\":{}}", "application/json");
+			return Content(JsonConvert.SerializeObject(StateSingleton.Instance.settings), "application/json");
 		}
 	} // TODO: Fixed String
 
@@ -223,6 +252,15 @@ namespace ProjectEarthServerAPI.Controllers
 		}
 
 		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/boosts/potions/{boostInstanceId}/deactivate")]
+		public IActionResult DeactivateBoost(string boostInstanceId) 
+		{
+			string authtoken = User.FindFirstValue(ClaimTypes.NameIdentifier);
+			var returnUpdates = BoostUtils.RemoveBoost(authtoken, boostInstanceId);
+			return Content(JsonConvert.SerializeObject(returnUpdates), "application/json");
+		}
+
+		[ApiVersion("1.1")]
 		[Route("1/api/v{version:apiVersion}/boosts/{boostInstanceId}")]
 		public IActionResult DeleteBoost(string boostInstanceId)
 		{
@@ -254,6 +292,33 @@ namespace ProjectEarthServerAPI.Controllers
 		{
 			var catalog = System.IO.File.ReadAllText(StateSingleton.Instance.config.productCatalogFileLocation); // Since the serialized version has the properties mixed up
 			return Content(catalog, "application/json");
+		}
+		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/commerce/storeItemInfo")]
+		public async Task<IActionResult> GetStoreItemInfo()
+		{
+			var stream = new StreamReader(Request.Body);
+			var body = await stream.ReadToEndAsync();
+			var response = ShopUtils.getStoreItemInfo(JsonConvert.DeserializeObject<List<StoreItemInfo>>(body));
+			return Content(JsonConvert.SerializeObject(response), "application/json");
+		}
+		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/commerce/purchase")]
+		public async Task<IActionResult> ItemPurchase()
+		{
+			var stream = new StreamReader(Request.Body);
+			var body = await stream.ReadToEndAsync();
+			var response = ShopUtils.purchase(User.FindFirstValue(ClaimTypes.NameIdentifier), JsonConvert.DeserializeObject<PurchaseItemRequest>(body));
+			return Content(JsonConvert.SerializeObject(response), "application/json");
+		}
+		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/commerce/purchaseV2")]
+		public async Task<IActionResult> ItemPurchaseV2()
+		{
+			var stream = new StreamReader(Request.Body);
+			var body = await stream.ReadToEndAsync();
+			var response = ShopUtils.purchaseV2(User.FindFirstValue(ClaimTypes.NameIdentifier), JsonConvert.DeserializeObject<PurchaseItemRequest>(body));
+			return Content(JsonConvert.SerializeObject(response), "application/json");
 		}
 	} // TODO: Needs Playfab counterpart. When that is in place we can implement buildplate previews.
 }

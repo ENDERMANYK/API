@@ -25,6 +25,18 @@ namespace ProjectEarthServerAPI.Models.Multiplayer.Adventure
 
 	public enum EncounterType
 	{
-		None
+		None,
+		Short4X4Peaceful,
+		Short4X4Hostile,
+		Short8X8Peaceful,
+		Short8X8Hostile,
+		Short16X16Peaceful,
+		Short16X16Hostile,
+		Tall4X4Peaceful,
+		Tall4X4Hostile,
+		Tall8X8Peaceful,
+		Tall8X8Hostile,
+		Tall16X16Peaceful,
+		Tall16X16Hostile
 	}
 }

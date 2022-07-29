@@ -53,7 +53,9 @@ namespace ProjectEarthServerAPI.Models
 		Challenge,
 		LevelUp,
 		Adventure,
-		Buildplate
+		Buildplate,
+		Crafting,
+		Smelting
 	}
 	public enum ItemEventAction
 	{

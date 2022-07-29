@@ -95,7 +95,7 @@ namespace ProjectEarthServerAPI.Models.Player
 		[JsonProperty(ItemConverterType = typeof(StringEnumConverter))]
 		public List<ItemEventAction> action { get; set; } // What the challenge is, like award/craft/smelt item
 		[JsonProperty(ItemConverterType = typeof(StringEnumConverter))]
-		public List<EventLocation> location { get; set; } // For tappable/challenge challenges, like "Get x wood from tappables" = tappable
+		public List<EventLocation>? location { get; set; } // For tappable/challenge challenges, like "Get x wood from tappables" = tappable
 		public int threshold { get; set; } // Amount of that requirement in challenge, like "Collect 2 cobblestone" = 2
 		public bool shouldBeUnique { get; set; } // If all items should only be counted once, for stuff that matches tags. TODO: Implement
 	}
@@ -130,7 +130,7 @@ namespace ProjectEarthServerAPI.Models.Player
 	    public ChallengeDuration duration { get; set; }
 	    [JsonConverter(typeof(StringEnumConverter))]
 	    public ChallengeType type { get; set; }
-		[JsonConverter(typeof(DateTimeConverter))]
+		[JsonConverter(typeof(DateTimeConverter)), JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 	    public DateTime? endTimeUtc { get; set; }
 	    public Rewards rewards { get; set; }
 	    public int percentComplete { get; set; }

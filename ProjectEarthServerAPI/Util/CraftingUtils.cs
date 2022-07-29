@@ -59,10 +59,8 @@ namespace ProjectEarthServerAPI.Util
 
 				if (!craftingJobs.ContainsKey(playerId))
 				{
-					craftingJobs.Add(playerId, new Dictionary<int, CraftingSlotInfo>());
-					craftingJobs[playerId].Add(1, new CraftingSlotInfo());
-					craftingJobs[playerId].Add(2, new CraftingSlotInfo());
-					craftingJobs[playerId].Add(3, new CraftingSlotInfo());
+					UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+					craftingJobs.Add(playerId, playerUtilityBlocks.result.crafting);
 				}
 
 				craftingJobs[playerId][slot] = job;
@@ -83,6 +81,11 @@ namespace ProjectEarthServerAPI.Util
 
 			try
 			{
+				if (!craftingJobs.ContainsKey(playerId))
+				{
+					UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+					craftingJobs.Add(playerId, playerUtilityBlocks.result.crafting);
+				}
 				var job = craftingJobs[playerId][slot];
 				var recipe = recipeList.result.crafting.Find(match => match.id == job.recipeId & !match.deprecated);
 				var updates = new Updates();
@@ -140,6 +143,11 @@ namespace ProjectEarthServerAPI.Util
 
 		public static CollectItemsResponse FinishCraftingJob(string playerId, int slot)
 		{
+			if (!craftingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				craftingJobs.Add(playerId, playerUtilityBlocks.result.crafting);
+			}
 			var job = craftingJobs[playerId][slot];
 			var recipe = recipeList.result.crafting.Find(match => match.id == job.recipeId & !match.deprecated);
 			int craftedAmount = 0;
@@ -183,7 +191,7 @@ namespace ProjectEarthServerAPI.Util
 			}
 
 			InventoryUtils.AddItemToInv(playerId, job.output.itemId, job.output.quantity * craftedAmount);
-			EventUtils.HandleEvents(playerId, new ItemEvent { action = ItemEventAction.ItemCrafted, amount = (uint)(job.output.quantity * craftedAmount), eventId = job.output.itemId });
+			EventUtils.HandleEvents(playerId, new ItemEvent { action = ItemEventAction.ItemCrafted, amount = (uint)(job.output.quantity * craftedAmount), eventId = job.output.itemId, location = EventLocation.Crafting });
 
 			returnResponse.result.rewards.Inventory = returnResponse.result.rewards.Inventory.Append(new RewardComponent
 			{
@@ -222,6 +230,11 @@ namespace ProjectEarthServerAPI.Util
 
 		public static CraftingSlotResponse CancelCraftingJob(string playerId, int slot)
 		{
+			if (!craftingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				craftingJobs.Add(playerId, playerUtilityBlocks.result.crafting);
+			}
 			var job = craftingJobs[playerId][slot];
 			var nextStreamId = GenericUtils.GetNextStreamVersion();
 			var resp = new CraftingSlotResponse
@@ -258,9 +271,15 @@ namespace ProjectEarthServerAPI.Util
 
 		public static CraftingUpdates UnlockCraftingSlot(string playerId, int slot)
 		{
+			if (!craftingJobs.ContainsKey(playerId))
+			{
+				UtilityBlocksResponse playerUtilityBlocks = UtilityBlockUtils.ReadUtilityBlocks(playerId);
+				craftingJobs.Add(playerId, playerUtilityBlocks.result.crafting);
+			}
 			var job = craftingJobs[playerId][slot];
 
-			RubyUtils.SetRubies(playerId, job.unlockPrice.cost - job.unlockPrice.discount, false);
+			RubyUtils.RemoveRubiesFromPlayer(playerId, job.unlockPrice.cost - job.unlockPrice.discount);
+
 			job.state = "Empty";
 			job.unlockPrice = null;
 
