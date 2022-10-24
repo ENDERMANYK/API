@@ -1,31 +1,43 @@
 ## Project Earth Api
 *The core API for Project Earth*
 
-## **WARNING: This thing is very early work in the progress, so not everything might work as expected**
+## DISCLAIMER
+The API implementation is NOT complete, which means that not all of the game features might work as expected.
 
 ## What does this component do?
 The core API handles the bulk of game functionality - pretty much everything that isn't direct AR gameplay is done here.
 
+| Currently working features | Partially working features                                                                                                 |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| Map                        | Buildplates (because cloudburst implemetation is not complete)                                                             |
+| Tappables                  | Adventures/Encounters (because cloudburst implemetation is not complete)                                                   |
+| Crafting                   | Smelting (kinda works, but it is a bit broken, because its implementation is not complete or lacks some necessary details) |
+| Store                      | Buildplate sharing (right now it lacks the website part where you could launch the game and play it)                       |
+| Inventory                  | Challenges (not all of the chalende conditions are implemented and some of them is broken)                                 |
+| Boosts                     | Profile (activity log is not implemented)                                                                                  |
+| Journal                    |                                                                                                                            |
+
 ## Building
- - Place the config in the same folder as whereever your built executable is going to end up
- - Open the sln in your IDE of choice
- - Build & run
+1. `git clone https://github.com/jackcaver/Api.git`
+2. `cd Api`
+3. `dotnet build` or use any IDE that you want and build it there
 
 ## Setting up the Project Earth server infrastructure.
 
 ### Getting all the parts
 
 to start, ensure that you have built copies of all the required components downloaded:
-- A built copy of the Api (you are in this repo), which you can fetch from [our jenkins](https://ci.rtm516.co.uk/job/ProjectEarth/job/Api/job/master/)
-- Our [ApiData](https://github.com/Project-Earth-Team/ApiData) repo, or your own data. In addition, you'll need the Minecraft Earth resource pack file, renamed to `vanilla.zip` and placed in the `resourcepacks` subfolder of the ApiData repo. You can procure the resourcepack from [here](https://cdn.mceserv.net/availableresourcepack/resourcepacks/dba38e59-091a-4826-b76a-a08d7de5a9e2-1301b0c257a311678123b9e7325d0d6c61db3c35), provided you're setting up before June 30th, 2021. Rename your clone to `data`, and place it next to your Api executable.
+- A built copy of the Api (you are in this repo), which you can get from [GitHub Actions](https://github.com/jackcaver/Api/actions/workflows/build.yml)
+- My [ApiData](https://github.com/jackcaver/ApiData) repo, or your own data. Rename your clone to `data`, and place it next to your Api executable. (if you are using a GitHub Actions build or if you got the API by using `git clone --recursive`, you can skip this step)
+- In addition, you'll need the Minecraft Earth resource pack file, renamed to `vanilla.zip` and placed in the `data/resourcepacks`. You can procure the resourcepack from [here](https://cdn.mceserv.net/availableresourcepack/resourcepacks/dba38e59-091a-4826-b76a-a08d7de5a9e2-1301b0c257a311678123b9e7325d0d6c61db3c35), provided you're setting up before June 30th, 2021.
 - Our fork of [Cloudburst](https://github.com/Project-Earth-Team/Server). Builds of this can be found [here](https://ci.rtm516.co.uk/job/ProjectEarth/job/Server/job/earth-inventory/). This jar can be located elsewhere from the Api things.
 - Run Cloudburst once to generate the file structure.
-- In the plugins folder, you'll need [GenoaPlugin](https://github.com/Project-Earth-Team/GenoaPlugin), and [GenoaAllocatorPlugin](https://github.com/Project-Earth-Team/GenoaAllocatorPlugin). The CI for this can be found [here](https://ci.rtm516.co.uk/job/ProjectEarth/job/GenoaPlugin/job/master/) and [here](https://ci.rtm516.co.uk/job/ProjectEarth/job/GenoaAllocatorPlugin/job/main/). **Note: make sure to rename your GenoaAllocatorPlugin.jar to ZGenoaAllocatorPlugin.jar, or you will run into issues with class loading** 
+- In the plugins folder, you'll need [GenoaPlugin](https://github.com/jackcaver/GenoaPlugin), and [GenoaAllocatorPlugin](https://github.com/jackcaver/GenoaAllocatorPlugin). The CI for this can be found [here](https://github.com/jackcaver/GenoaPlugin/actions/workflows/CI.yml) and [here](https://github.com/jackcaver/GenoaAllocatorPlugin/actions/workflows/CI.yml). **Note: make sure to rename your GenoaAllocatorPlugin.jar to ZGenoaAllocatorPlugin.jar, or you will run into issues with class loading** 
 
 ### Setting up
 
 On the cloudburst side:
-- within the `plugins` folder, create a `GenoaAllocatorPlugin` folder, and in there, make a `key.txt` file containing a base64 encryption key. An example key is
+- within the `plugins` folder, create a `GenoaAllocatorPlugin` folder, and in there, make a `key.txt` file containing a base64 encryption key and `ip.txt` file containing your server's ip address. An example key is
  ```
 /g1xCS33QYGC+F2s016WXaQWT8ICnzJvdqcVltNtWljrkCyjd5Ut4tvy2d/IgNga0uniZxv/t0hELdZmvx+cdA==
 ```

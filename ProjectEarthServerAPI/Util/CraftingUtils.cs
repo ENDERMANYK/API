@@ -141,6 +141,22 @@ namespace ProjectEarthServerAPI.Util
 
 		}
 
+		public static SplitRubyResponse FinishCraftingJobNow(string playerId, int slot)
+		{
+			var job = craftingJobs[playerId][slot];
+
+			job.streamVersion = GenericUtils.GetNextStreamVersion();
+			job.available = job.total - job.completed;
+			job.completed += job.available;
+			job.nextCompletionUtc = null;
+			job.state = "Completed";
+			job.escrow = new InputItem[0];
+
+			UtilityBlockUtils.UpdateUtilityBlocks(playerId, slot, job);
+
+			return RubyUtils.ReadRubies(playerId);
+		}
+
 		public static CollectItemsResponse FinishCraftingJob(string playerId, int slot)
 		{
 			if (!craftingJobs.ContainsKey(playerId))
@@ -177,7 +193,7 @@ namespace ProjectEarthServerAPI.Util
 					job.nextCompletionUtc = job.nextCompletionUtc.Value.Add(recipe.duration.TimeOfDay);
 					job.completed += craftedAmount;
 					//job.available -= craftedAmount;
-					for (int i = 0; i < job.escrow.Length - 1; i++)
+					for (int i = 0; i < job.escrow.Length; i++)
 					{
 						job.escrow[i].quantity -= recipe.ingredients[i].quantity * craftedAmount;
 					}

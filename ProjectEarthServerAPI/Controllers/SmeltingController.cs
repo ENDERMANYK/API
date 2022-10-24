@@ -51,6 +51,13 @@ namespace ProjectEarthServerAPI.Controllers
 			return Content(JsonConvert.SerializeObject(returnPrice), "application/json");
 		}
 
+		[ApiVersion("1.1")]
+		[Route("1/api/v{version:apiVersion}/smelting/{slot}/finish")]
+		public IActionResult PostCraftingFinish(int slot)
+		{
+			var result = SmeltingUtils.FinishCraftingJobNow(User.FindFirstValue(ClaimTypes.NameIdentifier), slot);
+			return Content(JsonConvert.SerializeObject(result), "application/json");
+		}
 
 		[ApiVersion("1.1")]
 		[Route("1/api/v{version:apiVersion}/smelting/{slot}")]

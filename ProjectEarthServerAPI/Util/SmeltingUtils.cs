@@ -167,6 +167,22 @@ namespace ProjectEarthServerAPI.Util
 			}
 		}
 
+		public static SplitRubyResponse FinishCraftingJobNow(string playerId, int slot)
+		{
+			var job = SmeltingJobs[playerId][slot];
+
+			job.streamVersion = GenericUtils.GetNextStreamVersion();
+			job.available = job.total - job.completed;
+			job.completed += job.available;
+			job.nextCompletionUtc = null;
+			job.state = "Completed";
+			job.escrow = new InputItem[0];
+
+			UtilityBlockUtils.UpdateUtilityBlocks(playerId, slot, job);
+
+			return RubyUtils.ReadRubies(playerId);
+		}
+
 		public static CollectItemsResponse FinishSmeltingJob(string playerId, int slot)
 		{
 			if (!SmeltingJobs.ContainsKey(playerId))

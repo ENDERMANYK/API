@@ -264,7 +264,7 @@ namespace ProjectEarthServerAPI.Util
 			sharedInv.hotbar = inv.hotbar;
 			sharedInv.stackableItems = new List<InventoryResponse.StackableItem>();
 			sharedInv.nonStackableItems = new List<InventoryResponse.NonStackableItem>();
-			for (int i = 0; i < 8; i++) {
+			for (int i = 0; i < inv.hotbar.Length; i++) {
 				if (inv.hotbar[i] != null) {
 					if (inv.hotbar[i].instanceId != null) {
 						var nonStackableItem = inv.nonStackableItems.Find(match => match.id == inv.hotbar[i].id);
